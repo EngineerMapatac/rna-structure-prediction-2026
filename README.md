@@ -3,21 +3,30 @@
 ![Status](https://img.shields.io/badge/Status-Active-success)
 ![Competition](https://img.shields.io/badge/Kaggle-Stanford_RNA_3D_Folding_2-blue)
 ![Python](https://img.shields.io/badge/Python-3.10+-yellow)
+![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-red)
+
 ---
 
 ## 📌 Project Overview
-This repository contains the source code and development pipeline for the **Stanford RNA 3D Folding Part 2** competition on Kaggle.
-
-**The Grand Challenge:**
-RNA is essential to life’s core functions, but predicting its 3D structure from sequence alone remains a massive unsolved problem in biology. Unlike proteins (solved by AlphaFold), RNA lacks the massive structural datasets required for easy modeling.
+---
+This repository contains the source code and deep learning pipeline for the **Stanford RNA 3D Folding Part 2** competition on Kaggle.
+---
 
 **The Goal:**
+
+---
+
 Predict the 3D spatial coordinates (x, y, z) of the **C1' atom** for every residue in a given RNA sequence. The model must generate 5 distinct structural conformations to account for RNA flexibility.
 
-## 🏆 Evaluation Metric
-Submissions are evaluated using the **TM-score** (Template Modeling score), which measures the topological similarity between the predicted structure and the ground truth (experimental structure).
-* **Score Range:** 0.0 (random) to 1.0 (perfect match).
-* **Key Constraint:** 8-hour runtime limit for inference on Kaggle.
+----
+
+**Current Architecture:**
+
+* **Input:** RNA Sequence (A, C, G, U)
+* **Model:** Transformer Encoder (Self-Attention mechanism)
+* **Output:** 3D Coordinates (x, y, z) for every base.
+  
+----
 
 ## 📂 Repository Structure
 
@@ -25,18 +34,21 @@ Submissions are evaluated using the **TM-score** (Template Modeling score), whic
 stanford-rna-folding-2/
 │
 ├── data/                   # Data files (Not synced to GitHub)
-│   ├── raw/                # Original Kaggle datasets (.csv, .cif)
+│   ├── raw/                # Original Kaggle datasets
+│   │   └── PDB_RNA/        # 3D Structure files (.cif)
 │   └── processed/          # Parsed tensors and features
 │
 ├── notebooks/              # Jupyter notebooks for experimentation
-│   ├── 01_data_exploration.ipynb
-│   └── 02_cif_parsing_demo.ipynb
+│   └── 01_data_exploration.ipynb
 │
 ├── src/                    # Source code modules
 │   ├── __init__.py
-│   ├── config.py           # Path configurations
-│   ├── data_loader.py      # Custom dataset classes
-│   └── cif_parser.py       # PDB/CIF file parsing logic
+│   ├── config.py           # Path configurations (Local vs Kaggle)
+│   ├── data_loader.py      # PyTorch Dataset & Tokenizer
+│   ├── cif_parser.py       # PDB/CIF file parsing logic
+│   ├── download_samples.py # Script to fetch sample data from RCSB
+│   ├── fix_csv.py          # Utility to sync CSVs with downloaded PDBs
+│   └── model.py            # Transformer Neural Network Architecture
 │
 ├── outputs/                # Model checkpoints and submission files
 ├── .gitignore              # Ignores large data files
@@ -46,66 +58,91 @@ stanford-rna-folding-2/
 ```
 
 ---
-## 🚀 Getting Started
----
-
-## 1. Prerequisites
-- Python 3.10+
-- Biopython
-- PyTorch (or TensorFlow/JAX)
-
----
-
-## 2. Installation
+🚀 Getting Started
+1. Installation
 Clone the repository and install the dependencies:
 
-```
+Bash
 git clone [https://github.com/YOUR_USERNAME/stanford-rna-folding-2.git](https://github.com/YOUR_USERNAME/stanford-rna-folding-2.git)
 cd stanford-rna-folding-2
 pip install -r requirements.txt
+2. Data Setup (Automated)
+We have included a script to download real RNA structure samples directly from the Protein Data Bank (RCSB), so you don't need to download the full 300GB dataset to start development.
 
 ```
----
+# 1. Download sample .cif files
+python src/download_samples.py
 
-## 3. Data Setup (Important!)
-The dataset for this competition is ~300GB. Do not try to download it all to your local machine unless you have massive storage.
+# 2. Parse the .cif files into coordinate tensors
+python src/cif_parser.py
 
-Local Dev: Download a small sample (5-10 .cif files) from the Kaggle Data Page and place them in data/raw/PDB_RNA/.
+# 3. Generate a matching training CSV file
+python src/fix_csv.py
 
-Kaggle Dev: Use the Kaggle API or Notebook environment to access the full dataset.
-
----
+```
 
 ## 🛠️ Usage
-Parsing the 3D Structures
-To extract the C1' coordinates from the raw .cif files:
+
+Testing the Data Pipeline
+
+To verify that the data loader is correctly reading sequences and aligning them with 3D coordinates:
 
 ```
-python src/cif_parser.py --input_dir data/raw/PDB_RNA --output_file data/processed/coords.csv
+python test_loader.py
+(Expected Output: ✅ MATCH FOUND)
 ```
-(Note: Ensure your src/config.py points to the correct directories)
+--- 
+
+Testing the Model Architecture
+
+To verify the Transformer model accepts RNA sequences and outputs 3D coordinates of the correct shape:
+
+```
+python test_model.py
+(Expected Output: ✅ SUCCESS: Model produced (x, y, z) coordinates...)
+
+```
+
 ---
+
 ## 📝 Roadmap
 [x] Repository Setup & Environment
 
-[ ] Data Pipeline (CIF Parsing & Coordinate Extraction)
+[x] Automated Data Downloader
 
-[ ] Feature Engineering (MSA Processing)
+[x] CIF Parsing & Coordinate Extraction
 
-[ ] Model Architecture (Graph Neural Network / Transformer)
+[x] PyTorch Dataset & DataLoader
 
-[ ] Training Loop Implementation
+[x] Transformer Model Implementation
 
-[ ] Inference Pipeline (Submission generation)
+[ ] Training Loop (Loss Function & Optimizer)
 
+[ ] Validation Pipeline (TM-Score Metric)
+
+[ ] Inference & Submission Generation
 
 ---
+
 ## 📚 Citation & Acknowledgments
+---
 Competition: Stanford RNA 3D Folding Part 2
 
 Organizers: Stanford University School of Medicine, NVIDIA Healthcare, AI@HHMI.
 
-Citation: Rhiju Das, Youhan Lee, et al. Stanford RNA 3D Folding Part 2. Kaggle, 2026.
+---
 
---- 
+```
+
+### **Commit the Changes**
+Now, update your GitHub repo with this new documentation and the new scripts (`model.py`, `download_samples.py`, etc.).
+
+Run these commands in your terminal:
+
+git add .
+git commit -m "docs: Updated README and added model architecture"
+git push origin main
+
+```
+---
 Created by EngineerMapatac
