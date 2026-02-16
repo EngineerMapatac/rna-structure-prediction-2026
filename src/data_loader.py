@@ -1,98 +1,119 @@
 import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader
-import os
 import numpy as np
+import os
 
-# Import our configuration variables
 try:
     from src import config
 except ImportError:
-    # Fallback for running script directly
     import config
 
-# Dictionary to map RNA bases to integers
-# 0 is usually reserved for padding, so we start at 1
+# Mapping constants
 BASE_TO_INT = {'A': 1, 'C': 2, 'G': 3, 'U': 4, 'N': 5}
-INT_TO_BASE = {v: k for k, v in BASE_TO_INT.items()}
-
-def load_csv_data(split='train'):
-    """
-    Loads the raw CSV data using paths from config.py.
-    
-    Args:
-        split (str): 'train' or 'test'
-    """
-    if split == 'train':
-        print(f"Loading training data from {config.TRAIN_CSV}...")
-        df = pd.read_csv(config.TRAIN_CSV)
-    elif split == 'test':
-        print(f"Loading test data from {config.TEST_CSV}...")
-        df = pd.read_csv(config.TEST_CSV)
-    else:
-        raise ValueError("Split must be 'train' or 'test'")
-        
-    return df
-
-def tokenize_sequence(sequence, max_len=None):
-    """
-    Converts a string sequence (e.g., 'ACGU') to a list of integers.
-    """
-    tokens = [BASE_TO_INT.get(base, 5) for base in sequence] # 5 for unknown 'N'
-    
-    if max_len:
-        # Pad or truncate if a max_len is specified (common for batching)
-        if len(tokens) < max_len:
-            tokens += [0] * (max_len - len(tokens)) # 0 is padding
-        else:
-            tokens = tokens[:max_len]
-            
-    return torch.tensor(tokens, dtype=torch.long)
+PAD_TOKEN = 0
 
 class RNADataset(Dataset):
     """
-    PyTorch Dataset for RNA Sequences.
+    PyTorch Dataset that returns:
+    - sequence (Input)
+    - coordinates (Target)
+    - mask (Which residues define the loss)
     """
-    def __init__(self, df, mode='train'):
-        self.df = df
+    def __init__(self, mode='train', max_len=None):
         self.mode = mode
+        self.max_len = max_len
         
+        # 1. Load Sequences
+        if mode == 'train':
+            self.seq_df = pd.read_csv(config.TRAIN_CSV)
+            # Load the coordinates we processed earlier
+            coords_path = os.path.join(config.PROCESSED_DATA_DIR, 'coords.csv')
+            if os.path.exists(coords_path):
+                self.coords_df = pd.read_csv(coords_path)
+                print(f"Loaded {len(self.coords_df)} coordinate labels.")
+            else:
+                print("WARNING: coords.csv not found! Run src/cif_parser.py first.")
+                self.coords_df = pd.DataFrame()
+        else:
+            self.seq_df = pd.read_csv(config.TEST_CSV)
+            self.coords_df = pd.DataFrame()
+
     def __len__(self):
-        return len(self.df)
+        return len(self.seq_df)
     
-    def __getitem__(self, idx):
-        row = self.df.iloc[idx]
+    def tokenize(self, sequence):
+        """Converts string 'ACGU' to tensor [1, 2, 3, 4]"""
+        tokens = [BASE_TO_INT.get(base, 5) for base in sequence]
+        return torch.tensor(tokens, dtype=torch.long)
+
+    def get_coords(self, target_id, length):
+        """
+        Retrieves (L, 3) coordinates for a specific target_id.
+        Returns coordinates and a mask (1 = valid data, 0 = missing).
+        """
+        # Create empty containers
+        coords = np.zeros((length, 3), dtype=np.float32)
+        mask = np.zeros((length,), dtype=np.float32)
         
-        # 1. Get the Sequence ID and content
+        if self.coords_df.empty:
+            return torch.tensor(coords), torch.tensor(mask)
+            
+        # Filter for this specific RNA molecule
+        # We assume target_id in sequence matches target_id in coords
+        subset = self.coords_df[self.coords_df['target_id'] == target_id]
+        
+        if subset.empty:
+            return torch.tensor(coords), torch.tensor(mask)
+            
+        # Map residue numbers to indices (1-based index -> 0-based index)
+        # Note: This is a simplified alignment. Real production code checks sequence alignment carefully.
+        indices = subset['residue_number'].values - 1 
+        
+        # Filter out indices that might be out of bounds (safety check)
+        valid = (indices >= 0) & (indices < length)
+        
+        safe_indices = indices[valid]
+        
+        if len(safe_indices) > 0:
+            coords[safe_indices] = subset.loc[valid, ['x', 'y', 'z']].values
+            mask[safe_indices] = 1.0
+            
+        return torch.tensor(coords, dtype=torch.float32), torch.tensor(mask, dtype=torch.float32)
+
+    def __getitem__(self, idx):
+        row = self.seq_df.iloc[idx]
         target_id = row['target_id']
         sequence = row['sequence']
+        length = len(sequence)
         
-        # 2. Tokenize the sequence
-        tokenized_seq = tokenize_sequence(sequence)
+        # Inputs
+        seq_tokens = self.tokenize(sequence)
         
-        # 3. Prepare the sample dictionary
-        sample = {
+        # Targets (Labels)
+        coords, mask = self.get_coords(target_id, length)
+        
+        return {
             'target_id': target_id,
-            'sequence_str': sequence,
-            'sequence_tokens': tokenized_seq,
-            'length': len(sequence)
+            'sequence': seq_tokens,
+            'coords': coords,   # Shape: (L, 3)
+            'mask': mask        # Shape: (L,)
         }
-        
-        # Note: We will add 3D coordinate loading here later
-        # when we integrate the parser.
-        
-        return sample
 
-# --- Usage Example (if run directly) ---
+# --- Test Block ---
 if __name__ == "__main__":
-    # Test the loader
-    try:
-        df_train = load_csv_data('train')
-        print(f"Loaded {len(df_train)} samples.")
+    # Test the loader with a small batch
+    print("Testing Data Loader...")
+    
+    dataset = RNADataset(mode='train')
+    
+    if len(dataset) > 0:
+        sample = dataset[0]
+        print(f"\nTarget ID: {sample['target_id']}")
+        print(f"Sequence Shape: {sample['sequence'].shape}")
+        print(f"Coords Shape:   {sample['coords'].shape}")
+        print(f"Mask Sum:       {sample['mask'].sum()} (Valid residues found)")
         
-        # Test the Dataset class
-        dataset = RNADataset(df_train)
-        print("Sample 0:", dataset[0])
-        
-    except FileNotFoundError:
-        print("Files not found. Check config paths.")
+        if sample['mask'].sum() == 0:
+            print("\nNOTE: Mask sum is 0. This is expected if the first sequence in train_sequences.csv")
+            print("is NOT one of the 5 PDBs we downloaded. Try iterating to find a match.")
