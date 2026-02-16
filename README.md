@@ -43,15 +43,6 @@ stanford-rna-folding-2/
 ├── README.md               # Project documentation
 └── requirements.txt        # Python dependencies
 
-
-🚀 Getting Started
-1. Prerequisites
-Python 3.10+
-
-Biopython
-
-PyTorch (or TensorFlow/JAX)
-
 ```
 
 ---
