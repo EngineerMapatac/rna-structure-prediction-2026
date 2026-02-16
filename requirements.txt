@@ -1,0 +1,22 @@
+# --- Core Data Science ---
+numpy>=1.24.0
+pandas>=2.0.0
+scipy>=1.10.0
+scikit-learn>=1.2.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# --- Bioinformatics ---
+biopython>=1.81       # Essential for parsing .cif and .pdb files
+py3Dmol>=2.0.0        # For interactive 3D visualization in notebooks
+
+# --- Deep Learning (PyTorch) ---
+# Note: In Kaggle, these are usually pre-installed, but good for local dev
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+
+# --- Utilities ---
+tqdm>=4.65.0          # Progress bars (very important for large loops)
+ipykernel>=6.0.0      # To run Jupyter notebooks
+jupyter>=1.0.0
