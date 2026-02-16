@@ -131,18 +131,3 @@ Competition: Stanford RNA 3D Folding Part 2
 Organizers: Stanford University School of Medicine, NVIDIA Healthcare, AI@HHMI.
 
 ---
-
-```
-
-### **Commit the Changes**
-Now, update your GitHub repo with this new documentation and the new scripts (`model.py`, `download_samples.py`, etc.).
-
-Run these commands in your terminal:
-
-git add .
-git commit -m "docs: Updated README and added model architecture"
-git push origin main
-
-```
----
-Created by EngineerMapatac
