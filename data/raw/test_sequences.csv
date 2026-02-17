@@ -1,0 +1,4 @@
+target_id,sequence,description
+Test_Target_001,AGGUCAGGUCAGGUCAGGUC,Dummy test sequence 1
+Test_Target_002,CCCAAAUUUGGGCCCAAA,Dummy test sequence 2
+Test_Target_003,UUGGAACCAAUUGGAACCAA,Dummy test sequence 3
